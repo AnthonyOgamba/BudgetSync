@@ -1,7 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useAppState } from "@/context/AppContext";
-import { useTheme } from "@/context/ThemeContext";
-import { Colors } from "@/context/ThemeContext";
+import { Colors, useTheme } from "@/context/ThemeContext";
+import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -24,7 +23,10 @@ function getRecentMonths(count: number) {
   for (let i = 0; i < count; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     result.push({
-      label: d.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+      label: d.toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      }),
       year: d.getFullYear(),
       month: d.getMonth(),
     });
@@ -44,16 +46,58 @@ export default function StatsScreen() {
   const selectedMonth = MONTH_OPTIONS[selectedMonthIdx];
 
   // Filter transactions by selected month + tab type
-  const txType = activeTopTab === "Expenses" ? "expense" : activeTopTab === "Income" ? "income" : null;
+  const txType =
+    activeTopTab === "Expenses"
+      ? "expense"
+      : activeTopTab === "Income"
+      ? "income"
+      : null;
 
   const filteredTxs = useMemo(() => {
     return transactions.filter((tx) => {
       const d = new Date(tx.date);
-      const matchMonth = d.getFullYear() === selectedMonth.year && d.getMonth() === selectedMonth.month;
+      const matchMonth =
+        d.getFullYear() === selectedMonth.year &&
+        d.getMonth() === selectedMonth.month;
       const matchType = txType ? tx.type === txType : true;
       return matchMonth && matchType;
     });
   }, [transactions, selectedMonth, txType]);
+
+  const totalIncome = useMemo(
+    () =>
+      transactions
+        .filter((tx) => {
+          const d = new Date(tx.date);
+          return (
+            d.getFullYear() === selectedMonth.year &&
+            d.getMonth() === selectedMonth.month &&
+            tx.type === "income"
+          );
+        })
+        .reduce((sum, tx) => sum + tx.amount, 0),
+    [transactions, selectedMonth]
+  );
+
+  const totalExpenses = useMemo(
+    () =>
+      transactions
+        .filter((tx) => {
+          const d = new Date(tx.date);
+          return (
+            d.getFullYear() === selectedMonth.year &&
+            d.getMonth() === selectedMonth.month &&
+            tx.type === "expense"
+          );
+        })
+        .reduce((sum, tx) => sum + tx.amount, 0),
+    [transactions, selectedMonth]
+  );
+
+  const netCashflow = useMemo(
+    () => totalIncome - totalExpenses,
+    [totalIncome, totalExpenses]
+  );
 
   // Total spending/income for selected period
   const totalAmount = useMemo(
@@ -69,7 +113,10 @@ export default function StatsScreen() {
 
   // Monthly budget total (sum of all monthly goals)
   const totalMonthlyBudget = useMemo(
-    () => budgetGoals.filter((g) => g.period === "monthly").reduce((sum, g) => sum + g.limit_amount, 0),
+    () =>
+      budgetGoals
+        .filter((g) => g.period === "monthly")
+        .reduce((sum, g) => sum + g.limit_amount, 0),
     [budgetGoals]
   );
 
@@ -110,9 +157,17 @@ export default function StatsScreen() {
     const size = 190;
     const circumference = 2 * Math.PI * radius;
     const topAmount = breakdown[0]?.amount ?? 0;
-    const progress = totalAmount > 0 ? Math.min(topAmount / totalAmount, 1) : 0;
+    const progress =
+      totalAmount > 0 ? Math.min(topAmount / totalAmount, 1) : 0;
     const strokeDashoffset = circumference - circumference * progress;
-    return { radius, strokeWidth, size, circumference, strokeDashoffset, color: breakdown[0]?.color ?? colors.accent };
+    return {
+      radius,
+      strokeWidth,
+      size,
+      circumference,
+      strokeDashoffset,
+      color: breakdown[0]?.color ?? colors.accent,
+    };
   }, [breakdown, totalAmount, colors.accent]);
 
   if (isLoading) {
@@ -125,7 +180,11 @@ export default function StatsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.headerTitle}>Stats</Text>
 
         {/* Top tabs */}
@@ -133,8 +192,20 @@ export default function StatsScreen() {
           {TOP_TABS.map((tab) => {
             const isActive = activeTopTab === tab;
             return (
-              <TouchableOpacity key={tab} style={styles.topTabButton} onPress={() => setActiveTopTab(tab)} activeOpacity={0.8}>
-                <Text style={[styles.topTabText, isActive && styles.topTabTextActive]}>{tab}</Text>
+              <TouchableOpacity
+                key={tab}
+                style={styles.topTabButton}
+                onPress={() => setActiveTopTab(tab)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.topTabText,
+                    isActive && styles.topTabTextActive,
+                  ]}
+                >
+                  {tab}
+                </Text>
                 {isActive && <View style={styles.topTabUnderline} />}
               </TouchableOpacity>
             );
@@ -152,52 +223,140 @@ export default function StatsScreen() {
                 onPress={() => setSelectedMonthIdx(idx)}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.monthChipText, isActive && styles.monthChipTextActive]}>
+                <Text
+                  style={[
+                    styles.monthChipText,
+                    isActive && styles.monthChipTextActive,
+                  ]}
+                >
                   {idx === 0 ? m.label : m.label.split(" ")[0]}
                 </Text>
-                {isActive && <Ionicons name="chevron-down" size={14} color={colors.textPrimary} />}
+                {isActive && (
+                  <Ionicons
+                    name="chevron-down"
+                    size={14}
+                    color={colors.textPrimary}
+                  />
+                )}
               </TouchableOpacity>
             );
           })}
         </View>
 
         {/* Summary cards */}
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>
-              {activeTopTab === "Income" ? "Total Income" : "Total Spending"}
-            </Text>
-            <Text style={styles.summaryValue}>
-              ${totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </Text>
-          </View>
+        {activeTopTab === "Overview" ? (
+          <View style={styles.overviewSection}>
+            <View style={styles.netCashflowCard}>
+              <Text style={styles.summaryLabel}>Net Cashflow</Text>
+              <Text
+                style={[
+                  styles.netCashflowValue,
+                  {
+                    color:
+                      netCashflow > 0
+                        ? colors.accent
+                        : netCashflow < 0
+                        ? "#ef4444"
+                        : colors.textPrimary,
+                  },
+                ]}
+              >
+                $
+                {netCashflow.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+              <Text style={styles.netCashflowSubtext}>
+                {netCashflow > 0
+                  ? "You earned more than you spent"
+                  : netCashflow < 0
+                  ? "You spent more than you earned"
+                  : "Income and expenses are balanced"}
+              </Text>
+            </View>
 
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Monthly Budget</Text>
-            {totalMonthlyBudget > 0 ? (
-              <>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>Income</Text>
                 <Text style={styles.summaryValue}>
-                  ${totalMonthlyBudget.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  $
+                  {totalIncome.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </Text>
-                <View style={styles.progressTrack}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: `${Math.min((totalAmount / totalMonthlyBudget) * 100, 100)}%` as any },
-                    ]}
-                  />
-                </View>
-              </>
-            ) : (
-              <Text style={styles.noBudgetText}>No goals set</Text>
-            )}
+              </View>
+
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>Expenses</Text>
+                <Text style={styles.summaryValue}>
+                  $
+                  {totalExpenses.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </Text>
+              </View>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>
+                {activeTopTab === "Income" ? "Total Income" : "Total Spending"}
+              </Text>
+              <Text style={styles.summaryValue}>
+                $
+                {totalAmount.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+            </View>
+
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>Monthly Budget</Text>
+              {totalMonthlyBudget > 0 ? (
+                <>
+                  <Text style={styles.summaryValue}>
+                    $
+                    {totalMonthlyBudget.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </Text>
+                  <View style={styles.progressTrack}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${Math.min(
+                            ((activeTopTab === "Income"
+                              ? totalIncome
+                              : totalExpenses) /
+                              totalMonthlyBudget) *
+                              100,
+                            100
+                          )}%` as any,
+                        },
+                      ]}
+                    />
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.noBudgetText}>No goals set</Text>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Spending breakdown */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
-            {activeTopTab === "Income" ? "Income Breakdown" : "Spending Breakdown"}
+            {activeTopTab === "Income"
+              ? "Income Breakdown"
+              : "Spending Breakdown"}
           </Text>
 
           {breakdown.length === 0 ? (
@@ -231,7 +390,11 @@ export default function StatsScreen() {
                   </Svg>
                   <View style={styles.chartCenter}>
                     <Text style={styles.chartCenterLabel}>TOP CATEGORY</Text>
-                    <Text style={styles.chartCenterValue} numberOfLines={1} adjustsFontSizeToFit>
+                    <Text
+                      style={styles.chartCenterValue}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
                       {topCategory}
                     </Text>
                   </View>
@@ -242,11 +405,20 @@ export default function StatsScreen() {
                 {breakdown.map((item) => (
                   <View key={item.label} style={styles.legendRow}>
                     <View style={styles.legendLeft}>
-                      <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                      <View
+                        style={[
+                          styles.legendDot,
+                          { backgroundColor: item.color },
+                        ]}
+                      />
                       <Text style={styles.legendText}>{item.label}</Text>
                     </View>
                     <Text style={styles.legendAmount}>
-                      ${item.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      $
+                      {item.amount.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </Text>
                   </View>
                 ))}
@@ -263,7 +435,10 @@ export default function StatsScreen() {
           </View>
           <View style={styles.weekChart}>
             {weeklyTotals.map((val, i) => {
-              const barHeight = maxWeekly > 0 ? Math.max((val / maxWeekly) * 90, val > 0 ? 6 : 0) : 0;
+              const barHeight =
+                maxWeekly > 0
+                  ? Math.max((val / maxWeekly) * 90, val > 0 ? 6 : 0)
+                  : 0;
               return (
                 <View key={i} style={styles.weekColumn}>
                   <View style={[styles.bar, { height: barHeight }]} />
@@ -283,50 +458,190 @@ function createStyles(colors: Colors) {
     safeArea: { flex: 1, backgroundColor: colors.background },
     container: { flex: 1, backgroundColor: colors.background },
     content: { padding: 16, paddingBottom: 30 },
-    headerTitle: { color: colors.textPrimary, fontSize: 22, fontWeight: "700", marginBottom: 18 },
+    headerTitle: {
+      color: colors.textPrimary,
+      fontSize: 22,
+      fontWeight: "700",
+      marginBottom: 18,
+    },
 
     topTabs: { flexDirection: "row", gap: 18, marginBottom: 16 },
     topTabButton: { alignItems: "center", paddingBottom: 2 },
-    topTabText: { color: colors.textSecondary, fontSize: 14, fontWeight: "500" },
+    topTabText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: "500",
+    },
     topTabTextActive: { color: colors.accent, fontWeight: "700" },
-    topTabUnderline: { width: "100%", height: 2, marginTop: 6, borderRadius: 999, backgroundColor: colors.accent },
+    topTabUnderline: {
+      width: "100%",
+      height: 2,
+      marginTop: 6,
+      borderRadius: 999,
+      backgroundColor: colors.accent,
+    },
 
-    monthRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 },
-    monthChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.statsChip },
+    monthRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 18,
+    },
+    monthChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+      backgroundColor: colors.statsChip,
+    },
     monthChipActive: { backgroundColor: colors.accent },
-    monthChipText: { color: colors.tabBarInactive, fontSize: 12, fontWeight: "600" },
+    monthChipText: {
+      color: colors.tabBarInactive,
+      fontSize: 12,
+      fontWeight: "600",
+    },
     monthChipTextActive: { color: colors.textPrimary },
 
+    overviewSection: { marginBottom: 18, gap: 12 },
+    netCashflowCard: {
+      padding: 16,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    netCashflowValue: {
+      fontSize: 28,
+      fontWeight: "800",
+      marginBottom: 6,
+    },
+    netCashflowSubtext: {
+      color: colors.textSecondary,
+      fontSize: 13,
+    },
+
     summaryRow: { flexDirection: "row", gap: 12, marginBottom: 18 },
-    summaryCard: { flex: 1, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+    summaryCard: {
+      flex: 1,
+      padding: 14,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
     summaryLabel: { color: colors.textSecondary, fontSize: 12, marginBottom: 8 },
-    summaryValue: { color: colors.textPrimary, fontSize: 22, fontWeight: "700", marginBottom: 8 },
+    summaryValue: {
+      color: colors.textPrimary,
+      fontSize: 22,
+      fontWeight: "700",
+      marginBottom: 8,
+    },
     noBudgetText: { color: colors.textSecondary, fontSize: 13 },
-    progressTrack: { height: 8, marginTop: 8, overflow: "hidden", borderRadius: 999, backgroundColor: colors.statsProgressTrack },
-    progressFill: { height: "100%", borderRadius: 999, backgroundColor: colors.accent },
+    progressTrack: {
+      height: 8,
+      marginTop: 8,
+      overflow: "hidden",
+      borderRadius: 999,
+      backgroundColor: colors.statsProgressTrack,
+    },
+    progressFill: {
+      height: "100%",
+      borderRadius: 999,
+      backgroundColor: colors.accent,
+    },
 
-    card: { padding: 16, marginBottom: 18, borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-    cardTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: "700", marginBottom: 14 },
-    emptyText: { color: colors.textSecondary, fontSize: 14, textAlign: "center", paddingVertical: 20 },
+    card: {
+      padding: 16,
+      marginBottom: 18,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    cardTitle: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontWeight: "700",
+      marginBottom: 14,
+    },
+    emptyText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      textAlign: "center",
+      paddingVertical: 20,
+    },
 
-    chartContainer: { alignItems: "center", justifyContent: "center", marginTop: 8, marginBottom: 22 },
-    chartWrapper: { width: 190, height: 190, alignItems: "center", justifyContent: "center" },
-    chartCenter: { position: "absolute", width: 118, alignItems: "center", justifyContent: "center" },
-    chartCenterLabel: { color: colors.textSecondary, fontSize: 9, fontWeight: "700", letterSpacing: 1.1, marginBottom: 6 },
-    chartCenterValue: { maxWidth: 110, color: colors.textPrimary, fontSize: 14, fontWeight: "700", textAlign: "center" },
+    chartContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 8,
+      marginBottom: 22,
+    },
+    chartWrapper: {
+      width: 190,
+      height: 190,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    chartCenter: {
+      position: "absolute",
+      width: 118,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    chartCenterLabel: {
+      color: colors.textSecondary,
+      fontSize: 9,
+      fontWeight: "700",
+      letterSpacing: 1.1,
+      marginBottom: 6,
+    },
+    chartCenterValue: {
+      maxWidth: 110,
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontWeight: "700",
+      textAlign: "center",
+    },
 
     legendList: { gap: 12 },
-    legendRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    legendRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
     legendLeft: { flexDirection: "row", alignItems: "center" },
     legendDot: { width: 8, height: 8, borderRadius: 999, marginRight: 10 },
     legendText: { color: colors.tabBarInactive, fontSize: 14 },
-    legendAmount: { color: colors.textPrimary, fontSize: 14, fontWeight: "600" },
+    legendAmount: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontWeight: "600",
+    },
 
-    weekHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    weekHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
     weekSubtext: { color: colors.textSecondary, fontSize: 12 },
-    weekChart: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 120, marginTop: 10, paddingHorizontal: 8 },
+    weekChart: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-end",
+      height: 120,
+      marginTop: 10,
+      paddingHorizontal: 8,
+    },
     weekColumn: { alignItems: "center" },
-    bar: { width: 24, borderRadius: 10, marginBottom: 8, backgroundColor: colors.accent },
+    bar: {
+      width: 24,
+      borderRadius: 10,
+      marginBottom: 8,
+      backgroundColor: colors.accent,
+    },
     weekLabel: { color: colors.tabBarInactive, fontSize: 12 },
   });
 }
